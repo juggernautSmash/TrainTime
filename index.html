@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title></title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <!-- Compiled and minified CSS -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    </head>
+    <body>
+        <div class='container'>
+            <nav>
+            <div class="nav-wrapper">
+                <a href="#" class="brand-logo">Train Time Scheduler</a>
+            </div>
+            </nav>
+            <div class='row'>
+                <div class='card'>
+                    <div class='card-content'>
+                        <table>
+                            <thead>
+                                <caption><h5>Train Schedule</h5></caption>
+                                <tr>
+                                    <th>Train Name</th>
+                                    <th>Destination</th>
+                                    <th>Frequency (in min)</th>
+                                    <th>Next Arrival</th>
+                                    <th>Minutes Away</th>
+                                    <th></th> <!-- Placeholder for delete button-->
+                                </tr>
+                            </thead>
+                            <tbody id='trainSchedule'>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class='row'>
+                    <div class='card'>
+                        <div class='card-content'>
+                            <table>
+                                <thead>
+                                    <caption><h5>Add a Train Schedule</h5></caption>
+                                    <tr>
+                                        <th>Train Name</th>
+                                        <th>Destination</th>
+                                        <th>First Train Time</th>
+                                        <th>Frequency</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <form name="trainAdder">
+                                            <td>
+                                                <input id='trainName' type='text' placeholder='New York Express'>
+                                            </td>
+                                            <td>
+                                                <input id='destination' type='text' placeholder='New York City, New York'>
+                                            </td>
+                                            <td>
+                                                <input name='trainTime' id='firstTrain' type='text' placeholder='24-Hour Format'>
+                                            </td>
+                                            <td>
+                                                <input id='frequency' type='text' placeholder='in minutes'>
+                                            </td>
+                                            <td>
+                                                <button id='addTrain' class='btn waves-effect waves-light'>Add Train</button>
+                                            </td>
+                                        </form>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Compiled and minified JavaScript -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+        <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/momentjs/2.12.0/moment.min.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/7.0.0/firebase-app.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/5.8.4/firebase-firestore.js"></script>
+        <script>
+            var firebaseConfig = {
+                apiKey: "AIzaSyDsLTa3YjB1d4hdeMyNcrGckNxokqiZQKQ",
+                authDomain: "test-project-36eb7.firebaseapp.com",
+                databaseURL: "https://test-project-36eb7.firebaseio.com",
+                projectId: "test-project-36eb7",
+                storageBucket: "test-project-36eb7.appspot.com",
+                messagingSenderId: "334083568172",
+                appId: "1:334083568172:web:2c185cd886d1d1b35ad789"
+            };
+            // Initialize Firebase
+            firebase.initializeApp(firebaseConfig);
+            const db = firebase.firestore()
+
+            const addTrainToFireBase = (train) => {
+                console.log(`Train name is: ${train.trainName}`)
+                db.collection('trains')
+                    .doc(`${train.trainName}`)
+                    .set(train)
+                    .catch(e => {
+                        console.log(`something when wrong in the addTrainToFireBase function`)
+                    })
+            }
+
+            db.collection('trains')
+                .onSnapshot(({docs}) => {
+                    docs.forEach(train =>{
+                        console.log(train.data())
+                        addTrain(train.data())
+                    })
+                })
+
+            const addTrain = ({trainName, destination, firstTrain, frequency}) => {
+                
+                let newTrainRow = document.createElement('tr')
+                newTrainRow.id = trainName
+                newTrainRow.innerHTML = `
+                    <td>${trainName}</td>
+                    <td>${destination}</td>
+                    <td>${frequency}</td>
+                    <td>${getNext(firstTrain, frequency)}</td>
+                    <td>${timeTillNext(firstTrain, frequency)}</td>
+                    <td><button class="btn btn-danger deleteBtn" data-tname=${trainName}>delete</button></td></td>
+                `
+                document.getElementById('trainSchedule').append(newTrainRow)
+            }
+
+              // pass original date in seconds (unix) and rate in minutes
+            const getNext = (original, rate) => {
+                console.log('running getNext')
+
+                //convert rate in seconds
+                const rateInSeconds = rate * 60
+
+                //get the time now in unix format
+                const now = moment().unix()
+                console.log(`raw value of now: ${now}`)
+                // console.log(`value of now: ${now.format("MM/DD/YYYY HH:mm")}`)
+
+                
+                let lapse = moment(original, 'HH:mm').unix()
+                console.log(`raw value of lapse: ${lapse}`)
+                // console.log(`value of lapse: ${lapse.format("MM/DD/YYYY HH:mm")}`)
+                
+
+                while (lapse < now) {
+                lapse += rateInSeconds
+                console.log(`lapse is ${moment(lapse, 'X').format('MMMM, Do YYYY hh:mm a')}`)
+                }
+
+                return moment(lapse, 'X').format('MMMM, Do YYYY hh:mm a')
+            }
+
+            // pass original date in seconds (unix) and rate in minutes
+            const timeTillNext = (original, rate) => {
+                console.log('running getNext')
+
+                //convert rate in seconds
+                const rateInSeconds = rate * 60
+                
+                //get the time now in unix format
+                const now = moment().unix()
+                console.log(`raw value of now: ${now}`)
+                // console.log(`value of now: ${now.format("MM/DD/YYYY HH:mm")}`)
+
+                
+                let lapse = moment(original, 'HH:mm').unix()
+                console.log(`raw value of lapse: ${lapse}`)
+                // console.log(`value of lapse: ${lapse.format("MM/DD/YYYY HH:mm")}`)
+                
+
+                while (lapse < now) {
+                lapse += rateInSeconds
+                console.log(`lapse is ${moment(lapse, 'X').format('MMMM, Do YYYY hh:mm a')}`)
+                }
+
+                const timeLeft = Math.floor((lapse - now)/600)
+
+                return timeLeft
+            }
+
+            document.getElementById('addTrain').addEventListener('click', e => {
+                e.preventDefault()
+                
+                let train = {
+                    trainName: document.getElementById('trainName').value,
+                    destination: document.getElementById('destination').value,
+                    firstTrain: document.getElementById('firstTrain').value,
+                    frequency:  document.getElementById('frequency').value 
+                }
+                
+                addTrain(train)
+                addTrainToFireBase(train)          
+
+                document.getElementById('trainName').value = ''
+                document.getElementById('destination').value = ''
+                document.getElementById('firstTrain').value = ''
+                document.getElementById('frequency').value = ''
+            })
+
+                // click event listener to delete a table row. MUST grab the document because delete buttons were dynamically added
+            document.addEventListener('click', ({ target }) => {
+                //console.log(target)
+            // checks to make sure the thing that was clicked on the page is in fact the delete button
+                if (target.className.indexOf('deleteBtn') !== -1) {
+                    console.log(`data set is : ${target.dataset.tname}`)
+                    //Remove the entry on the document
+                    document.querySelector(`#${target.dataset.tname}`).remove()
+                    
+                    //Remove entry in the database
+                    db.collection('trains').doc(target.dataset.tname).delete()
+                } 
+            })
+        </script>
+    </body>
+</html>
